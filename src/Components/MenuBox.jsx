@@ -1,16 +1,14 @@
-import { useNavigate} from "react-router-dom";
+import { Link } from "react-router-dom";
 
-const MenuBox = ({ name,url }) => {
-  const navigate = useNavigate();
+const MenuBox = ({ name, url }) => {
   return (
-    
-    <div
-      onClick={()=>{
-        navigate(url)
-      }}
-      className='bg-violet-400 w-[80%] p-4 text-2xl h-40 flex justify-center items-center rounded-2xl m-auto text-white font-semibold my-4'>
-      <h1>{name}</h1>
-    </div>
+    <Link to={`/${url}`} className="group">
+      <div className="p-6 md:p-8 w-full bg-white/20 backdrop-blur-lg shadow-2xl rounded-2xl transition-all duration-300 transform hover:scale-110 hover:bg-white/30 border border-white/20 text-center cursor-pointer">
+        <h2 className="text-lg md:text-xl font-semibold group-hover:text-blue-300 transition-colors duration-300">
+          {name}
+        </h2>
+      </div>
+    </Link>
   );
 };
 
