@@ -8,18 +8,23 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { FcGoogle } from "react-icons/fc"; // Google Icon
 
 // Helper function for user details
+// Helper function for user details
 const parseUserDetails = (email) => {
   let role = "student";
   let department = "";
   let year = "";
 
-  const emailParts = email.split("@")[0].split(".");
-  if (emailParts.length === 2) {
-    department = emailParts[1].replace(/\d+/g, "");
-    year = emailParts[1].match(/\d+/g) ? emailParts[1].match(/\d+/g)[0] : "";
+  const emailParts = email.split("@")[0]; // Get the part before @
+
+  if (emailParts.includes(".")) {
+    // Student email format: shivak.cse2023@citchennai.net
+    const [name, deptYear] = emailParts.split(".");
+    department = deptYear.replace(/\d+/g, ""); // Extract department (cse)
+    year = deptYear.match(/\d+/g) ? deptYear.match(/\d+/g)[0] : ""; // Extract year (2023)
   } else {
+    // Faculty email format: shivak@citchennai.net
     role = "faculty";
-    department = emailParts[1];
+    department = emailParts.match(/[a-zA-Z]+/g)[0]; // Extract department (cse)
   }
 
   return { role, department, year };
@@ -53,7 +58,7 @@ const GoogleLogin = () => {
           email,
           role,
           department,
-          year,
+          year
         });
       }
 

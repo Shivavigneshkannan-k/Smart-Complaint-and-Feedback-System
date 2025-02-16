@@ -5,7 +5,7 @@ import ViewComplaints from "./Components/ViewComplaints";
 import TrackProgress from "./Components/TrackProgress";
 import CommonIssues from "./Components/CommonIssues";
 import AddCommonIssue from "./Components/AddCommonIssue";
-import ViewDetail from "./Components/ViewDetail";
+import ViewDetail from "./Components/ViewDetail"; // View Complaint Details Component
 import Rating from "./Components/Rating";
 import GoogleLogin from "./Login";
 import Body from "./Body"; // Ensure this contains <Outlet />
@@ -20,7 +20,7 @@ const routes = createBrowserRouter([
       { path: "dashboard", element: <DashBoard /> },
       { path: "complaints", element: <Complaints /> },
       { path: "viewComplaints", element: <ViewComplaints /> },
-      { path: "viewDetail", element: <ViewDetail /> },
+      { path: "viewDetail/:id", element: <ViewDetail /> }, // Updated to accept complaint ID
       { path: "commonIssues", element: <CommonIssues /> },
       { path: "trackProgress", element: <TrackProgress /> },
       { path: "rating", element: <Rating /> },

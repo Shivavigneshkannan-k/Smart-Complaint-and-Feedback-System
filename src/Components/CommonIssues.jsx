@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
 import CommonIssueMessage from "./CommonIssueMessage";
@@ -16,10 +16,16 @@ const CommonIssues = () => {
   const fetchCommonIssues = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "CommonIssues"));
-      const issuesList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const issuesList = querySnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp?.seconds
+            ? new Date(doc.data().timestamp.seconds * 1000)
+            : null,
+        }))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); // Sort latest first
+
       setIssues(issuesList);
     } catch (error) {
       console.error("Error fetching common issues:", error);
@@ -27,43 +33,53 @@ const CommonIssues = () => {
   };
 
   return (
-    <div className="bg-gray-200 min-h-screen flex flex-col pb-20"> {/* Added padding at the bottom */}
-      <h1 className="text-3xl px-8 py-8 rounded-b-xl shadow-lg bg-white">
-        Common Issues
-      </h1>
+    <div className="bg-gray-100 min-h-screen flex flex-col">
+      {/* Header Section with Back Button */}
+      <div className="bg-white shadow-md px-6 py-4 flex items-center justify-between">
+        <button
+          className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+          onClick={() => navigate(-1)}
+        >
+          <span className="text-lg">←</span> Back
+        </button>
+        <h1 className="text-2xl font-semibold text-gray-800">Common Issues</h1>
+        <div className="w-12"></div> {/* Empty div for alignment */}
+      </div>
 
       {/* Search Bar */}
-      <form
-        onSubmit={(e) => e.preventDefault()}
-        className="flex justify-center mt-8 mb-4 mx-4"
-      >
-        <input
-          type="text"
-          className="w-full rounded-md px-2 py-2 bg-white"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <button className="bg-blue-300 px-2 py-1 rounded-md mx-2">Search</button>
-      </form>
+      <div className="flex justify-center mt-6 mx-4">
+        <div className="relative w-full max-w-lg">
+          <input
+            type="text"
+            className="w-full px-4 py-3 pl-10 bg-white rounded-full shadow-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="🔍 Search issues..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
-      {/* Display Filtered Issues */}
-      <div className="m-4">
-        {issues
-          .filter((issue) =>
-            issue.title.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .map((issue) => (
-            <CommonIssueMessage key={issue.id} issue={issue} />
-          ))}
+      {/* Issues List */}
+      <div className="mt-6 mx-4 space-y-4">
+        {issues.length === 0 ? (
+          <p className="text-center text-gray-500">No issues found.</p>
+        ) : (
+          issues
+            .filter((issue) =>
+              issue && issue.title.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map((issue) =>
+              issue ? <CommonIssueMessage key={issue.id} issue={issue} /> : null
+            )
+        )}
       </div>
 
       {/* Add Common Issue Button */}
       <button
-        className="p-8 py-9 bg-blue-300 rounded-full fixed bottom-8 right-8 text-xl shadow-md"
+        className="p-5 bg-blue-500 text-white rounded-full fixed bottom-6 right-6 text-xl shadow-lg hover:bg-blue-600 transition-all"
         onClick={() => navigate("/addCommonIssue")}
       >
-        ADD
+        ➕ Add Issue
       </button>
     </div>
   );

@@ -39,36 +39,48 @@ const AddCommonIssue = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-200">
-      <h1 className="text-3xl px-8 py-8 rounded-b-xl shadow-lg bg-white">
-        Add Common Issue
-      </h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Header Section with Back Button */}
+      <div className="bg-white shadow-md px-6 py-4 flex items-center justify-between">
+        <button
+          className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+          onClick={() => navigate(-1)}
+        >
+          <span className="text-lg">←</span> Back
+        </button>
+        <h1 className="text-2xl font-semibold text-gray-800">Add Common Issue</h1>
+        <div className="w-12"></div> {/* Empty div for alignment */}
+      </div>
 
-      <form className="w-full text-xl flex-col items-center m-4 mt-10" onSubmit={handleSubmit}>
-        <div className="mb-6">
-          <p className="text-2xl font-semibold my-2">Issue:</p>
+      {/* Form Section */}
+      <form className="flex flex-col items-center px-6 mt-8" onSubmit={handleSubmit}>
+        {/* Issue Title */}
+        <div className="w-full max-w-lg mb-6">
+          <label className="block text-lg font-semibold text-gray-700 mb-2">Issue Title:</label>
           <input
             type="text"
             placeholder="Enter issue title"
-            className="px-2 py-2 bg-white rounded-md w-[90%]"
+            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             value={issueTitle}
             onChange={(e) => setIssueTitle(e.target.value)}
           />
         </div>
 
-        <div className="mb-6">
-          <p className="text-2xl font-semibold my-2">Description:</p>
+        {/* Description */}
+        <div className="w-full max-w-lg mb-6">
+          <label className="block text-lg font-semibold text-gray-700 mb-2">Description:</label>
           <textarea
             placeholder="Describe the issue within 50 words"
-            className="bg-white p-4 w-[90%] h-40 rounded-md"
+            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm h-40 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           ></textarea>
         </div>
 
+        {/* Submit Button */}
         <button
           type="submit"
-          className="bg-green-500 w-[90%] px-2 py-2 rounded-md absolute bottom-5"
+          className="w-full max-w-lg py-3 text-lg font-semibold text-white bg-green-500 rounded-lg shadow-md hover:bg-green-600 transition-all disabled:bg-gray-400"
           disabled={loading}
         >
           {loading ? "Publishing..." : "Publish"}

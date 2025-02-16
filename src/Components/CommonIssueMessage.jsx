@@ -3,27 +3,26 @@ import { db } from "../firebaseConfig";
 import { useState, useEffect } from "react";
 
 const CommonIssueMessage = ({ issue, userId }) => {
+  if (!issue) {
+    return <p className="text-red-500 text-center">Error: Issue data is missing.</p>;
+  }
+
   const [votes, setVotes] = useState(issue.upvotes - issue.downvotes);
   const [upvotes, setUpvotes] = useState(issue.upvotes);
   const [downvotes, setDownvotes] = useState(issue.downvotes);
-  const [userVote, setUserVote] = useState(null); // To track if the user has voted
+  const [userVote, setUserVote] = useState(null); // Track user vote status
 
   useEffect(() => {
     const checkUserVote = async () => {
-      const issueRef = doc(db, "CommonIssues", issue.id);
-
       try {
-        const issueSnap = await getDoc(issueRef);
-        if (!issueSnap.exists()) {
-          console.error("Issue not found!");
-          return;
-        }
+        const issueSnap = await getDoc(doc(db, "CommonIssues", issue.id));
+        if (issueSnap.exists()) {
+          const currentData = issueSnap.data();
+          const votedBy = currentData.votedBy || {}; // Object to store user votes
 
-        const currentData = issueSnap.data();
-        const votedBy = currentData.votedBy || {}; // Object to store user votes
-
-        if (votedBy[userId]) {
-          setUserVote(votedBy[userId]); // Set the user vote state (up or down)
+          if (votedBy[userId]) {
+            setUserVote(votedBy[userId]); // Set the user vote state (up or down)
+          }
         }
       } catch (error) {
         console.error("Error checking user vote:", error);
@@ -37,12 +36,9 @@ const CommonIssueMessage = ({ issue, userId }) => {
     const issueRef = doc(db, "CommonIssues", issue.id);
 
     try {
-      // Fetch the latest data from Firestore
+      // Fetch latest data
       const issueSnap = await getDoc(issueRef);
-      if (!issueSnap.exists()) {
-        console.error("Issue not found!");
-        return;
-      }
+      if (!issueSnap.exists()) return;
 
       const currentData = issueSnap.data();
       let newUpvotes = currentData.upvotes;
@@ -50,71 +46,69 @@ const CommonIssueMessage = ({ issue, userId }) => {
 
       // Handle vote logic:
       if (type === "up") {
-        if (userVote === "down") {
-          // Undo the downvote before adding the upvote
-          newDownvotes -= 1;
-          setDownvotes(newDownvotes); // Update downvotes state
-        }
-        newUpvotes += 1; // Add the upvote
-        setUpvotes(newUpvotes); // Update upvotes state
+        if (userVote === "down") newDownvotes -= 1; // Undo downvote
+        newUpvotes += 1; // Upvote
       } else if (type === "down") {
-        if (userVote === "up") {
-          // Undo the upvote before adding the downvote
-          newUpvotes -= 1;
-          setUpvotes(newUpvotes); // Update upvotes state
-        }
-        newDownvotes += 1; // Add the downvote
-        setDownvotes(newDownvotes); // Update downvotes state
+        if (userVote === "up") newUpvotes -= 1; // Undo upvote
+        newDownvotes += 1; // Downvote
       }
 
-      // **Always increase the total votes** without decreasing:
-      const totalVotes = upvotes + downvotes + 1; // Always add 1 to the total votes
-
-      // Update the votedBy field in Firestore to track the user's vote
-      const newVotedBy = { ...currentData.votedBy, [userId]: type };
-
-      // Update Firestore with the new votes and the user's vote
+      // Update votes in Firestore
       await updateDoc(issueRef, {
         upvotes: newUpvotes,
         downvotes: newDownvotes,
-        votedBy: newVotedBy, // Store the vote of the user
+        votedBy: { ...currentData.votedBy, [userId]: type }, // Store user vote
       });
 
-      // Update the local UI state after Firestore update
-      setVotes(totalVotes); // Update total votes dynamically
-      setUserVote(type); // Mark the user's vote as recorded
+      // Update UI state
+      setUpvotes(newUpvotes);
+      setDownvotes(newDownvotes);
+      setVotes(newUpvotes - newDownvotes);
+      setUserVote(type);
     } catch (error) {
       console.error("Error updating votes:", error);
     }
   };
 
   return (
-    <div className="p-4 shadow-md bg-white rounded-lg flex flex-col my-4">
-      <div className="flex justify-between mb-4">
-        <h1 className="ml-2 text-lg font-semibold">{issue.title}</h1>
-        <div className="flex gap-2 text-xl pb-2 px-2">
-          <p>⬆️ {upvotes}</p>
-          <p>⬇️ {downvotes}</p>
+    <div className="p-4 shadow-md bg-white rounded-lg my-4 border-l-4 border-blue-500">
+      {/* Issue Title */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+        <h1 className="ml-2 text-lg sm:text-xl font-semibold">{issue.title || "Unknown Issue"}</h1>
+        <div className="flex gap-4 text-lg sm:text-xl pt-2 sm:pt-0">
+          <p className="text-green-600 font-bold">⬆️ {upvotes}</p>
+          <p className="text-red-600 font-bold">⬇️ {downvotes}</p>
         </div>
       </div>
-      <div className="flex gap-4 justify-between">
+
+      {/* Issue Details */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div className="ml-2">
-          <p>Total votes: {votes}</p>
+          <p className="text-gray-600">Total votes: {votes}</p>
+          <p className="text-gray-500 text-sm sm:text-md">
+            Submitted On: {issue.timestamp ? issue.timestamp.toLocaleString() : "Unknown"}
+          </p>
         </div>
-        <div>
+
+        {/* Voting Buttons */}
+        <div className="flex gap-2 mt-4 sm:mt-0">
           <button
-            className="bg-green-400 py-1 px-2 rounded-md text-md cursor-pointer shadow-lg mr-4"
+            className={`py-2 px-4 rounded-md text-md cursor-pointer shadow-lg transition-all ${
+              userVote === "up" ? "bg-green-500 text-white" : "bg-green-300 hover:bg-green-400"
+            }`}
             onClick={() => handleVote("up")}
-            disabled={userVote === "up"} // Disable if the user has already upvoted
+            disabled={userVote === "up"}
           >
-            Upvote
+            👍 Upvote
           </button>
           <button
-            className="bg-red-500 py-1 px-2 rounded-md text-md cursor-pointer shadow-lg"
+            className={`py-2 px-4 rounded-md text-md cursor-pointer shadow-lg transition-all ${
+              userVote === "down" ? "bg-red-500 text-white" : "bg-red-300 hover:bg-red-400"
+            }`}
             onClick={() => handleVote("down")}
-            disabled={userVote === "down"} // Disable if the user has already downvoted
+            disabled={userVote === "down"}
           >
-            Downvote
+            👎 Downvote
           </button>
         </div>
       </div>
