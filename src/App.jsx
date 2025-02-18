@@ -10,6 +10,7 @@ import Rating from "./Components/Rating";
 import GoogleLogin from "./Login";
 import Body from "./Body"; // Ensure this contains <Outlet />
 import EditProfile from "./Components/EditProfile";
+import ComplaintOnIndividual from "./Components/ComplaintOnIndividual";
 
 const routes = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ const routes = createBrowserRouter([
       { path: "rating", element: <Rating /> },
       { path: "addCommonIssue", element: <AddCommonIssue /> },
       { path: "editProfile", element: <EditProfile /> },
+      { path: "complainOnIndividual", element: <ComplaintOnIndividual /> },
     ]
   }
 ]);

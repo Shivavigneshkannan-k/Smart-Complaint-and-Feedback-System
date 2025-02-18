@@ -1,30 +1,28 @@
 "use client"; // Ensures it's a client component
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "./firebaseConfig";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { FcGoogle } from "react-icons/fc"; // Google Icon
+import { FcGoogle } from "react-icons/fc";
+import { Loader2 } from "lucide-react"; // Animated Loader Icon
 
-// Helper function for user details
 // Helper function for user details
 const parseUserDetails = (email) => {
   let role = "student";
   let department = "";
   let year = "";
 
-  const emailParts = email.split("@")[0]; // Get the part before @
+  const emailParts = email.split("@")[0];
 
   if (emailParts.includes(".")) {
-    // Student email format: shivak.cse2023@citchennai.net
     const [name, deptYear] = emailParts.split(".");
-    department = deptYear.replace(/\d+/g, ""); // Extract department (cse)
-    year = deptYear.match(/\d+/g) ? deptYear.match(/\d+/g)[0] : ""; // Extract year (2023)
+    department = deptYear.replace(/\d+/g, "");
+    year = deptYear.match(/\d+/g) ? deptYear.match(/\d+/g)[0] : "";
   } else {
-    // Faculty email format: shivak@citchennai.net
     role = "faculty";
-    department = emailParts.match(/[a-zA-Z]+/g)[0]; // Extract department (cse)
+    department = emailParts.match(/[a-zA-Z]+/g)[0];
   }
 
   return { role, department, year };
@@ -32,10 +30,12 @@ const parseUserDetails = (email) => {
 
 const GoogleLogin = () => {
   const [user, setUser] = useState(null);
-  const navigate = useNavigate(); // Initialize navigate
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    setLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
@@ -43,6 +43,7 @@ const GoogleLogin = () => {
 
       if (!email.endsWith("@citchennai.net")) {
         alert("Only college emails are allowed!");
+        setLoading(false);
         return;
       }
 
@@ -58,47 +59,58 @@ const GoogleLogin = () => {
           email,
           role,
           department,
-          year
+          year,
         });
       }
 
-      setUser(user); // Save user in state
+      setUser(user);
       console.log("User logged in:", user.displayName);
-
-      // Navigate to dashboard after login
       navigate("/dashboard");
     } catch (error) {
       console.error("Login Failed:", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className='flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6'>
-      <div className='bg-white shadow-lg rounded-2xl p-8 w-full max-w-md text-center'>
-        <h2 className='text-2xl font-bold text-gray-800 mb-4'>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 p-6">
+      {/* Glassmorphism Card */}
+      <div className="bg-white/80 backdrop-blur-md shadow-xl rounded-2xl p-8 w-full max-w-md text-center border border-gray-200">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4 drop-shadow-sm">
           Welcome to the Portal
         </h2>
-        <p className='text-gray-600 mb-6'>
+        <p className="text-gray-700 mb-6">
           Sign in with your{" "}
-          <span className='font-semibold'>citchennai.net</span> email
+          <span className="font-semibold">citchennai.net</span> email
         </p>
 
         {user ? (
-          <div className='text-center'>
+          <div className="text-center">
             <img
               src={user.photoURL}
-              alt='User Avatar'
-              className='w-16 h-16 rounded-full mx-auto mb-4'
+              alt="User Avatar"
+              className="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-blue-400"
             />
-            <p className='text-lg font-semibold'>{user.displayName}</p>
-            <p className='text-gray-600'>{user.email}</p>
+            <p className="text-lg font-semibold text-gray-800">{user.displayName}</p>
+            <p className="text-gray-600">{user.email}</p>
           </div>
         ) : (
           <button
             onClick={handleGoogleLogin}
-            className='flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg transition duration-300'>
-            <FcGoogle className='text-2xl' />
-            Sign in with Google
+            className="flex items-center justify-center gap-3 w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 active:scale-95"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin text-xl" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                <FcGoogle className="text-2xl" />
+                Sign in with Google
+              </>
+            )}
           </button>
         )}
       </div>

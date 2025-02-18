@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 const EditProfile = () => {
   const [userData, setUserData] = useState(null);
@@ -9,6 +10,7 @@ const EditProfile = () => {
   const [updatedData, setUpdatedData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const sections = ["A", "B", "C", "D"];
   const departments = ["CSE", "ECE", "EEE", "MECH", "CIVIL"];
@@ -19,9 +21,10 @@ const EditProfile = () => {
         const userRef = doc(db, "Users", uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
-          setUserData(userSnap.data());
-          setUpdatedData(userSnap.data());
-          fetchAuthorities(userSnap.data(), userSnap.data().role);
+          const user = userSnap.data();
+          setUserData(user);
+          setUpdatedData(user);
+          fetchAuthorities(uid); // Pass current user's ID to filter it out
         } else {
           setError("User data not found.");
         }
@@ -32,24 +35,25 @@ const EditProfile = () => {
       }
     };
 
-    const fetchAuthorities = async () => {
+    const fetchAuthorities = async (currentUserId) => {
       try {
-        // Fetch all faculty members as higher authorities
         const q = query(collection(db, "Users"), where("role", "==", "faculty"));
-    
         const querySnapshot = await getDocs(q);
+
+        // Filter out the current user from the list
         setHigherAuthorities(
-          querySnapshot.docs.map((doc) => ({
-            uid: doc.id,
-            name: doc.data().name,
-            role: doc.data().role,
-          }))
+          querySnapshot.docs
+            .filter((doc) => doc.id !== currentUserId)
+            .map((doc) => ({
+              uid: doc.id,
+              name: doc.data().name,
+              role: doc.data().role,
+            }))
         );
       } catch (err) {
         setError("Error fetching higher authorities.");
       }
     };
-    
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -71,6 +75,7 @@ const EditProfile = () => {
       const userRef = doc(db, "Users", auth.currentUser.uid);
       await updateDoc(userRef, updatedData);
       alert("Profile updated successfully!");
+      navigate(-1); // Navigate back after update
     } catch (err) {
       setError("Error updating profile.");
     }

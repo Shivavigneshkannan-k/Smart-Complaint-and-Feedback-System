@@ -1,115 +1,125 @@
+import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { useState, useEffect } from "react";
 
 const CommonIssueMessage = ({ issue, userId }) => {
-  if (!issue) {
-    return <p className="text-red-500 text-center">Error: Issue data is missing.</p>;
-  }
-
-  const [votes, setVotes] = useState(issue.upvotes - issue.downvotes);
-  const [upvotes, setUpvotes] = useState(issue.upvotes);
-  const [downvotes, setDownvotes] = useState(issue.downvotes);
-  const [userVote, setUserVote] = useState(null); // Track user vote status
+  const [upvotes, setUpvotes] = useState({});
+  const [downvotes, setDownvotes] = useState({});
+  const [userVote, setUserVote] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const checkUserVote = async () => {
+    const fetchVotes = async () => {
       try {
-        const issueSnap = await getDoc(doc(db, "CommonIssues", issue.id));
-        if (issueSnap.exists()) {
-          const currentData = issueSnap.data();
-          const votedBy = currentData.votedBy || {}; // Object to store user votes
+        const issueRef = doc(db, "CommonIssues", issue.id);
+        const issueSnap = await getDoc(issueRef);
 
-          if (votedBy[userId]) {
-            setUserVote(votedBy[userId]); // Set the user vote state (up or down)
+        if (issueSnap.exists()) {
+          const data = issueSnap.data();
+          setUpvotes(data.upvotes || {});
+          setDownvotes(data.downvotes || {});
+
+          if (data.upvotes?.[userId]) {
+            setUserVote("upvote");
+          } else if (data.downvotes?.[userId]) {
+            setUserVote("downvote");
           }
         }
       } catch (error) {
-        console.error("Error checking user vote:", error);
+        console.error("Error fetching votes:", error);
       }
     };
 
-    checkUserVote();
-  }, [issue.id, userId]);
+    if (issue?.id) fetchVotes();
+  }, [issue, userId]);
 
-  const handleVote = async (type) => {
+  const handleVote = async (voteType) => {
+    if (!userId) {
+      alert("Please login to vote!");
+      return;
+    }
+    if (loading) return;
+    setLoading(true);
+
     const issueRef = doc(db, "CommonIssues", issue.id);
 
     try {
-      // Fetch latest data
       const issueSnap = await getDoc(issueRef);
       if (!issueSnap.exists()) return;
 
       const currentData = issueSnap.data();
-      let newUpvotes = currentData.upvotes;
-      let newDownvotes = currentData.downvotes;
+      let newUpvotes = { ...currentData.upvotes } || {};
+      let newDownvotes = { ...currentData.downvotes } || {};
 
-      // Handle vote logic:
-      if (type === "up") {
-        if (userVote === "down") newDownvotes -= 1; // Undo downvote
-        newUpvotes += 1; // Upvote
-      } else if (type === "down") {
-        if (userVote === "up") newUpvotes -= 1; // Undo upvote
-        newDownvotes += 1; // Downvote
+      if (voteType === "upvote") {
+        if (newDownvotes[userId]) delete newDownvotes[userId]; // Remove from downvotes if exists
+        newUpvotes[userId] = true; // Add to upvotes
+        setUserVote("upvote");
+      } else if (voteType === "downvote") {
+        if (newUpvotes[userId]) delete newUpvotes[userId]; // Remove from upvotes if exists
+        newDownvotes[userId] = true; // Add to downvotes
+        setUserVote("downvote");
       }
 
-      // Update votes in Firestore
       await updateDoc(issueRef, {
         upvotes: newUpvotes,
-        downvotes: newDownvotes,
-        votedBy: { ...currentData.votedBy, [userId]: type }, // Store user vote
+        downvotes: newDownvotes
       });
 
-      // Update UI state
       setUpvotes(newUpvotes);
       setDownvotes(newDownvotes);
-      setVotes(newUpvotes - newDownvotes);
-      setUserVote(type);
     } catch (error) {
-      console.error("Error updating votes:", error);
+      console.error("Error updating vote:", error);
+      alert("Error processing your vote. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 shadow-md bg-white rounded-lg my-4 border-l-4 border-blue-500">
-      {/* Issue Title */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-        <h1 className="ml-2 text-lg sm:text-xl font-semibold">{issue.title || "Unknown Issue"}</h1>
-        <div className="flex gap-4 text-lg sm:text-xl pt-2 sm:pt-0">
-          <p className="text-green-600 font-bold">⬆️ {upvotes}</p>
-          <p className="text-red-600 font-bold">⬇️ {downvotes}</p>
-        </div>
+    <div className="p-4 shadow-md bg-white rounded-lg my-4 cursor-pointer transition-all duration-300 ease-in-out hover:shadow-lg">
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-semibold">{issue.title}</h1>
       </div>
 
-      {/* Issue Details */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div className="ml-2">
-          <p className="text-gray-600">Total votes: {votes}</p>
-          <p className="text-gray-500 text-sm sm:text-md">
-            Submitted On: {issue.timestamp ? issue.timestamp.toLocaleString() : "Unknown"}
-          </p>
+      {/* Description */}
+      <p className="text-gray-700 mb-4">{issue.description}</p>
+
+      {/* Interaction Bar */}
+      <div className="flex justify-between items-center">
+        {/* Voting Section */}
+        <div className="flex gap-4">
+          <button
+            className={`flex items-center gap-2 px-3 py-1 rounded-full transition-colors ${
+              userVote === "upvote"
+                ? "bg-green-100 text-green-600"
+                : "bg-gray-100 hover:bg-gray-200"
+            }`}
+            onClick={() => handleVote("upvote")}
+            disabled={loading}
+          >
+            <span className="text-lg">👍</span>
+            <span className="font-medium">{Object.keys(upvotes).length}</span>
+          </button>
+
+          <button
+            className={`flex items-center gap-2 px-3 py-1 rounded-full transition-colors ${
+              userVote === "downvote"
+                ? "bg-red-100 text-red-600"
+                : "bg-gray-100 hover:bg-gray-200"
+            }`}
+            onClick={() => handleVote("downvote")}
+            disabled={loading}
+          >
+            <span className="text-lg">👎</span>
+            <span className="font-medium">{Object.keys(downvotes).length}</span>
+          </button>
         </div>
 
-        {/* Voting Buttons */}
-        <div className="flex gap-2 mt-4 sm:mt-0">
-          <button
-            className={`py-2 px-4 rounded-md text-md cursor-pointer shadow-lg transition-all ${
-              userVote === "up" ? "bg-green-500 text-white" : "bg-green-300 hover:bg-green-400"
-            }`}
-            onClick={() => handleVote("up")}
-            disabled={userVote === "up"}
-          >
-            👍 Upvote
-          </button>
-          <button
-            className={`py-2 px-4 rounded-md text-md cursor-pointer shadow-lg transition-all ${
-              userVote === "down" ? "bg-red-500 text-white" : "bg-red-300 hover:bg-red-400"
-            }`}
-            onClick={() => handleVote("down")}
-            disabled={userVote === "down"}
-          >
-            👎 Downvote
-          </button>
+        {/* Total Votes */}
+        <div className="text-sm text-gray-500">
+          Total votes: {Object.keys(upvotes).length + Object.keys(downvotes).length}
         </div>
       </div>
     </div>
